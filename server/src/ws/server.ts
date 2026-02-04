@@ -26,13 +26,28 @@ export function attachWebSockerServer(server: HttpServer) {
   });
 
   wss.on("connection", (socket) => {
+    socket.isAlive = true;
+    socket.on("pong", () => {
+      socket.isAlive = true;
+    });
     sendJson(socket, {
       type: "welcome",
     });
 
-    socket.on("error", (err) => {
-      console.error("WebSocket error:", err);
+    socket.on("error", console.error);
+  });
+
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (!ws.isAlive) return ws.terminate();
+
+      ws.isAlive = false;
+      ws.ping();
     });
+  }, 30000);
+
+  wss.on("close", () => {
+    clearInterval(interval);
   });
 
   function broadcastMatchCreated(match: Match) {
