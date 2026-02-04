@@ -1,30 +1,16 @@
-import { envConfig, validateEnv } from "./config/env";
-import { WebSocketServer, WebSocket } from "ws";
+import express from "express";
+import { envConfig } from "./config/env";
 
-validateEnv();
+const app = express();
+const port = envConfig.PORT;
 
-const wss = new WebSocketServer({ port: envConfig.PORT });
-wss.on("connection", (socket, request) => {
-  const ip: string | undefined = request.socket.remoteAddress;
+app.use(express.json());
 
-  socket.on("message", (rawData) => {
-    const message = rawData.toString();
-    console.log({ rawData });
-
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(`Server Broadcast: ${message}`);
-      }
-    });
-  });
-
-  socket.on("error", (error) => {
-    console.error(`Error: ${error.message}: ${ip}`);
-  });
-
-  socket.on("close", () => {
-    console.log(`Client disconnected`);
-  });
+app.get("/", (req, res) => {
+  res.send("Hello, World!");
 });
 
-console.log(`Websocket server is live on ws://localhost:${envConfig.PORT}`);
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+``;

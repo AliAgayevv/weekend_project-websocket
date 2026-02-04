@@ -4,12 +4,14 @@ dotenv.config();
 interface EnvConfig {
   PORT: number;
   NODE_ENV: "development" | "production";
+  DATABASE_URL?: string;
 }
 
 export const envConfig: EnvConfig = {
   PORT: parseInt(process.env.PORT || "3000"),
   NODE_ENV:
     (process.env.NODE_ENV as "development" | "production") || "development",
+  DATABASE_URL: process.env.DATABASE_URL,
 };
 
 export const validateEnv = (): void => {
