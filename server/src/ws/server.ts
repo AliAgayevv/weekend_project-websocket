@@ -12,7 +12,7 @@ function sendJson(socket: WebSocket, payload: any) {
 // Send payload to all connected clients
 function broadcast(wss: WebSocketServer, payload: any) {
   for (const client of wss.clients) {
-    if (client.readyState !== WebSocket.OPEN) return;
+    if (client.readyState !== WebSocket.OPEN) continue;
     client.send(JSON.stringify(payload));
   }
 }
