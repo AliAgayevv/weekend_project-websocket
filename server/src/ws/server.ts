@@ -3,6 +3,70 @@ import { Server as HttpServer } from "http";
 import { Match } from "../db/schema";
 import { wsArcjet } from "../arcjet";
 
+const matchSubscribers = new Map<number, Set<WebSocket>>();
+
+function subscribe(matchId: number, socket: WebSocket) {
+  if (!matchSubscribers.has(matchId)) {
+    matchSubscribers.set(matchId, new Set());
+  }
+  matchSubscribers.get(matchId)!.add(socket);
+}
+
+function unsubscribe(matchId: number, socket: WebSocket) {
+  const subscribers = matchSubscribers.get(matchId);
+
+  if (!subscribers) return;
+
+  subscribers.delete(socket);
+
+  if (subscribers.size === 0) {
+    matchSubscribers.delete(matchId);
+    return;
+  }
+}
+
+function cleanupSubscriptions(socket: WebSocket) {
+  for (const matchId of socket.subscriptions) {
+    unsubscribe(matchId, socket);
+  }
+}
+
+function handleMessage(socket: WebSocket, data: string) {
+  let message;
+
+  try {
+    message = JSON.parse(data.toString());
+  } catch (error) {
+    sendJson(socket, {
+      type: "error",
+      error: "Invalid JSON format",
+    });
+    return;
+  }
+  if (message?.type === "subscribe" && Number.isInteger(message.matchId)) {
+    subscribe(message.matchId, socket);
+    socket.subscriptions.add(message.matchId);
+    sendJson(socket, {
+      type: "subscribed",
+      matchId: message.matchId,
+    });
+    return;
+  }
+  if (message?.type === "unsubscribe" && Number.isInteger(message.matchId)) {
+    unsubscribe(message.matchId, socket);
+    socket.subscriptions.delete(message.matchId);
+    sendJson(socket, {
+      type: "unsubscribed",
+      matchId: message.matchId,
+    });
+    return;
+  }
+  sendJson(socket, {
+    type: "error",
+    error: "Unknown message type",
+  });
+}
+
 function sendJson(socket: WebSocket, payload: any) {
   // If client is not connected, end
   if (socket.readyState !== WebSocket.OPEN) return;
@@ -11,10 +75,20 @@ function sendJson(socket: WebSocket, payload: any) {
 }
 
 // Send payload to all connected clients
-function broadcast(wss: WebSocketServer, payload: any) {
+function broadcastToAll(wss: WebSocketServer, payload: any) {
   for (const client of wss.clients) {
     if (client.readyState !== WebSocket.OPEN) continue;
     client.send(JSON.stringify(payload));
+  }
+}
+function broadcastToMatch(matchId: number, payload: any) {
+  const subscribers = matchSubscribers.get(matchId);
+  if (!subscribers || subscribers.size === 0) return;
+
+  const message = JSON.stringify(payload);
+
+  for (const client of subscribers) {
+    if (client.readyState === WebSocket.OPEN) client.send(message);
   }
 }
 
@@ -48,11 +122,22 @@ export function attachWebSockerServer(server: HttpServer) {
     socket.on("pong", () => {
       socket.isAlive = true;
     });
+
+    socket.subscriptions = new Set<number>();
+
     sendJson(socket, {
       type: "welcome",
     });
 
-    socket.on("error", console.error);
+    socket.on("message", (data) => handleMessage(socket, data.toString()));
+
+    socket.on("error", () => {
+      socket.terminate();
+    });
+
+    socket.on("close", () => {
+      cleanupSubscriptions(socket);
+    });
   });
 
   const interval = setInterval(() => {
@@ -69,7 +154,12 @@ export function attachWebSockerServer(server: HttpServer) {
   });
 
   function broadcastMatchCreated(match: Match) {
-    broadcast(wss, { type: "match_created", data: match });
+    broadcastToAll(wss, { type: "match_created", data: match });
   }
-  return { broadcastMatchCreated };
+
+  function broadcastCommentary(matchId: number, comment: any) {
+    broadcastToMatch(matchId, { type: "commentary", data: comment });
+  }
+
+  return { broadcastMatchCreated, broadcastCommentary };
 }

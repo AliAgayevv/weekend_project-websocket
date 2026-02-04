@@ -1,6 +1,7 @@
 import express from "express";
 import { envConfig, validateEnv } from "./config/env";
 import matchesRouter from "./routes/matches";
+import commentaryRouter from "./routes/commentary";
 import http from "http";
 import { attachWebSockerServer } from "./ws/server";
 import { securityMiddleware } from "./arcjet";
@@ -13,17 +14,20 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
-app.use(securityMiddleware);
+app.use(securityMiddleware());
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
 });
 
 app.use("/matches", matchesRouter);
+app.use("/matches", commentaryRouter);
 
-const { broadcastMatchCreated } = attachWebSockerServer(server);
+const { broadcastMatchCreated, broadcastCommentary } =
+  attachWebSockerServer(server);
 
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
+app.locals.broadcastCommentary = broadcastCommentary;
 
 server.listen(PORT, HOST, () => {
   const baseUrl =
