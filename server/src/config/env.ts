@@ -4,7 +4,7 @@ dotenv.config();
 interface EnvConfig {
   PORT: number;
   NODE_ENV: "development" | "production";
-  DATABASE_URL?: string;
+  DATABASE_URL?: string | undefined;
 }
 
 export const envConfig: EnvConfig = {
