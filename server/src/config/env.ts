@@ -5,6 +5,7 @@ interface EnvConfig {
   PORT: number;
   NODE_ENV: "development" | "production";
   DATABASE_URL?: string | undefined;
+  HOST?: string | undefined;
 }
 
 export const envConfig: EnvConfig = {
@@ -12,6 +13,7 @@ export const envConfig: EnvConfig = {
   NODE_ENV:
     (process.env.NODE_ENV as "development" | "production") || "development",
   DATABASE_URL: process.env.DATABASE_URL,
+  HOST: process.env.HOST,
 };
 
 export const validateEnv = (): void => {

@@ -16,7 +16,7 @@ router.get("/", async (req: Request, res: Response) => {
   if (!parsed.success) {
     return res.status(400).json({
       error: `Invalid query parameters.`,
-      details: JSON.stringify(parsed.error),
+      details: parsed.error.issues,
     });
   }
 
@@ -44,7 +44,7 @@ router.post("/", async (req: Request, res: Response) => {
   if (!parsed.success) {
     return res.status(400).json({
       error: `Invalid payload.`,
-      details: JSON.stringify(parsed.error),
+      details: parsed.error.issues,
     });
   }
   const {
@@ -63,6 +63,10 @@ router.post("/", async (req: Request, res: Response) => {
         status: getMatchStatus(startTime, endTime) || "scheduled",
       })
       .returning();
+
+    if (res.app.locals.broadcastMatchCreated) {
+      res.app.locals.broadcastMatchCreated(event);
+    }
 
     res.status(201).json({ data: event });
   } catch (error) {
