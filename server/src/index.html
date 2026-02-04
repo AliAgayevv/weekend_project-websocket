@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Live server</title>
+    <style>
+        body{font-family: sans-serif; padding: 20px; background: #121212; color: #fff;}
+        #log{white-space: pre-wrap; background: #000; padding: 10px; border-radius: 1px; height: 300px; overflow-y: scroll; border: 1px solid #333 }
+        .status-on {color: #00ff00}
+        .status-off {color: #ff0000}
+    </style>
+</head>
+<body>
+    <h1>WebSocket Live Server</h1>
+    <p id="status" class="status-off">Connecting...</p>
+
+    <form id="message-form">
+        <input type="text" id="message-input" placeholder="Send cargo..." required>
+        <button type="submit">Deploy message</button>
+    </form>
+
+    <h3>Live stream logs</h3>
+    <pre id="log"></pre>
+</body>
+<script>
+    const statusEl = document.getElementById('status');
+    const log = document.getElementById('log');
+    const input = document.getElementById('message-input');
+    const form = document.getElementById('message-form');
+
+
+    // Handshake
+    const socket = new WebSocket('ws://localhost:8080');
+
+    const appendLog = (label, message) => {
+        const entry = `${new Date().toLocaleTimeString()} ${label} ${message}\n`;
+        log.textContent += entry; 
+    };
+
+    
+    socket.addEventListener('open', () => {
+        statusEl.textContent = 'Connected: ws://localhost:8080';
+        statusEl.className = 'status-on';
+        appendLog('[WS OPEN]', 'Connection established');
+    });
+
+    socket.addEventListener('close', () => {
+        statusEl.textContent = 'Disconnected';
+        statusEl.className = 'status-off';
+        appendLog('[WS CLOSE]', 'Connection closed');
+    });
+
+    socket.addEventListener('message', (event) => {
+        appendLog('[WS RECEIVE]', event.data);
+    });
+
+    document.getElementById('message-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if(socket.readyState !== WebSocket.OPEN) {
+        appendLog('[ERROR]', 'WebSocket is not open. Cannot send message.');
+        return;
+    }
+    const msg = input.value.trim();
+    socket.send(msg);  
+    appendLog('[WS SEND]', msg);
+    input.value = '';
+});
+
+    </script>
+</html>
