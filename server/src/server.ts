@@ -3,6 +3,7 @@ import { envConfig, validateEnv } from "./config/env";
 import matchesRouter from "./routes/matches";
 import http from "http";
 import { attachWebSockerServer } from "./ws/server";
+import { securityMiddleware } from "./arcjet";
 validateEnv();
 
 const PORT = envConfig.PORT;
@@ -12,6 +13,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
+app.use(securityMiddleware);
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
