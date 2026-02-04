@@ -41,6 +41,7 @@ function handleMessage(socket: WebSocket, data: string) {
       type: "error",
       error: "Invalid JSON format",
     });
+    return;
   }
   if (message?.type === "subscribe" && Number.isInteger(message.matchId)) {
     subscribe(message.matchId, socket);
